@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-multipart
+duckdb
+pandas
+openai
+python-dotenv
+langgraph
+langchain
+langchain-openai
