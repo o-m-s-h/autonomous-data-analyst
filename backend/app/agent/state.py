@@ -15,3 +15,7 @@ class AnalystState(TypedDict):
     dataset_id: str
 
     file_path: str
+
+    executed_queries: list[str]
+
+    query_results: list[list[dict]]

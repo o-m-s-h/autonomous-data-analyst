@@ -1,0 +1,14 @@
+date,quarter,region,category,units_sold,sales
+15-01-2025,Q1,North,Electronics,120,180000
+10-02-2025,Q1,South,Electronics,95,142500
+20-03-2025,Q1,West,Furniture,80,96000
+12-04-2025,Q2,North,Electronics,135,202500
+18-05-2025,Q2,South,Furniture,110,132000
+22-06-2025,Q2,West,Electronics,125,187500
+10-07-2025,Q3,North,Electronics,100,150000
+25-07-2025,Q3,South,Furniture,70,84000
+14-08-2025,Q3,West,Electronics,90,135000
+05-09-2025,Q3,North,Furniture,60,72000
+11-10-2025,Q4,North,Electronics,145,217500
+16-11-2025,Q4,South,Furniture,115,138000
+08-12-2025,Q4,West,Electronics,140,210000

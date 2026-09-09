@@ -1,3 +1,5 @@
+import json
+from langchain_core.messages import AIMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 from langchain_core.tools import tool
@@ -32,7 +34,7 @@ def create_tools(file_path: str):
         """
         Inspect the uploaded CSV dataset.
 
-        Returns column names and their data types.
+        Returns column names and data types.
         """
 
         return get_schema(file_path)
@@ -46,6 +48,8 @@ def create_tools(file_path: str):
         The uploaded CSV is available as table `dataset`.
 
         Only SELECT and WITH queries are allowed.
+
+        Returns the result as JSON.
         """
 
         result = execute_sql(
@@ -74,11 +78,15 @@ def create_graph(file_path: str):
     )
 
 
+    # -----------------------------------------
+    # LLM
+    # -----------------------------------------
+
     llm = ChatOpenAI(
-    model=LLM_MODEL,
-    api_key=LLM_API_KEY,
-    base_url=LLM_BASE_URL,
-    temperature=0
+        model=LLM_MODEL,
+        api_key=LLM_API_KEY,
+        base_url=LLM_BASE_URL,
+        temperature=0
     )
 
 
@@ -86,6 +94,10 @@ def create_graph(file_path: str):
         tools
     )
 
+
+    # -----------------------------------------
+    # Analyst node
+    # -----------------------------------------
 
     def analyst_node(
         state: AnalystState
@@ -109,10 +121,18 @@ def create_graph(file_path: str):
         }
 
 
+    # -----------------------------------------
+    # Tool node
+    # -----------------------------------------
+
     tool_node = ToolNode(
         tools
     )
 
+
+    # -----------------------------------------
+    # Routing
+    # -----------------------------------------
 
     def should_continue(
         state: AnalystState
@@ -126,6 +146,101 @@ def create_graph(file_path: str):
 
         return END
 
+    def track_results(
+            state: AnalystState
+        ):
+    
+            messages = state["messages"]
+    
+            executed_queries = list(
+                state.get(
+                    "executed_queries",
+                    []
+                )
+            )
+    
+            query_results = list(
+                state.get(
+                    "query_results",
+                    []
+                )
+            )
+    
+    
+            for i, message in enumerate(messages):
+    
+                if not isinstance(
+                    message,
+                    AIMessage
+                ):
+                    continue
+    
+    
+                for tool_call in message.tool_calls:
+    
+                    if tool_call["name"] != "run_sql":
+                        continue
+    
+    
+                    sql = tool_call["args"].get(
+                        "sql"
+                    )
+    
+    
+                    # Avoid recording the same query twice
+                    if sql in executed_queries:
+                        continue
+    
+    
+                    executed_queries.append(
+                        sql
+                    )
+    
+    
+                    # Find corresponding tool result
+                    for next_message in messages[i + 1:]:
+    
+                        if not isinstance(
+                            next_message,
+                            ToolMessage
+                        ):
+                            continue
+    
+    
+                        if (
+                            next_message.tool_call_id
+                            == tool_call["id"]
+                        ):
+    
+                            try:
+    
+                                parsed_result = json.loads(
+                                    next_message.content
+                                )
+    
+                            except Exception:
+    
+                                parsed_result = []
+    
+    
+                            query_results.append(
+                                parsed_result
+                            )
+    
+                            break
+    
+    
+            return {
+                "executed_queries":
+                    executed_queries,
+    
+                "query_results":
+                    query_results
+            }
+
+    # -----------------------------------------
+    # Graph
+    # -----------------------------------------
 
     builder = StateGraph(
         AnalystState
@@ -137,9 +252,15 @@ def create_graph(file_path: str):
         analyst_node
     )
 
+
     builder.add_node(
         "tools",
         tool_node
+    )
+
+    builder.add_node(
+        "track_results",
+        track_results
     )
 
 
@@ -161,8 +282,15 @@ def create_graph(file_path: str):
 
     builder.add_edge(
         "tools",
+        "track_results"
+    )
+
+    builder.add_edge(
+        "track_results",
         "analyst"
     )
 
+    
 
-    return builder.compile()
+
+    return builder.compile()    
