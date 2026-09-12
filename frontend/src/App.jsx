@@ -3,6 +3,7 @@ import { useState } from "react";
 import FileUpload from "./components/FileUpload";
 import Chat from "./components/Chat";
 import AnalysisResult from "./components/AnalysisResult";
+import AnalysisErrorBoundary from "./components/AnalysisErrorBoundary";
 
 
 function App() {
@@ -45,9 +46,11 @@ function App() {
             )}
 
 
-            <AnalysisResult
-                result={result}
-            />
+            {result && (
+                <AnalysisErrorBoundary onDismiss={() => setResult(null)}>
+                    <AnalysisResult result={result} />
+                </AnalysisErrorBoundary>
+            )}
 
         </div>
     );

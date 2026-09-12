@@ -5,6 +5,7 @@ function Chat({ datasetId, onResult }) {
 
     const [question, setQuestion] = useState("");
     const [loading, setLoading] = useState(false);
+    const [includeVisuals, setIncludeVisuals] = useState(true);
 
 
     const askQuestion = async () => {
@@ -19,6 +20,7 @@ function Chat({ datasetId, onResult }) {
         }
 
         setLoading(true);
+        onResult(null);
 
         try {
 
@@ -26,7 +28,8 @@ function Chat({ datasetId, onResult }) {
                 "http://localhost:8000/analysis/ask",
                 {
                     dataset_id: datasetId,
-                    question: question
+                    question: question,
+                    include_visuals: includeVisuals,
                 }
             );
 
@@ -60,6 +63,16 @@ function Chat({ datasetId, onResult }) {
                 rows={4}
             />
 
+            <label style={{ display: "block", margin: "12px 0" }}>
+                <input
+                    type="checkbox"
+                    checked={includeVisuals}
+                    onChange={(event) => setIncludeVisuals(event.target.checked)}
+                    disabled={loading}
+                />
+                {" "}Include charts when useful
+            </label>
+
             <button
                 onClick={askQuestion}
                 disabled={loading}
@@ -68,6 +81,12 @@ function Chat({ datasetId, onResult }) {
                     ? "Analyzing..."
                     : "Ask"}
             </button>
+
+            {loading && (
+                <p role="status" aria-live="polite">
+                    {includeVisuals ? "Analyzing your data and preparing useful visuals…" : "Analyzing your data…"}
+                </p>
+            )}
 
         </div>
     );
