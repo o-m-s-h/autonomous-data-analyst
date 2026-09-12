@@ -12,6 +12,7 @@ router = APIRouter(prefix="/analysis", tags=["Analysis"])
 class AnalysisRequest(BaseModel):
     dataset_id: str
     question: str = Field(min_length=1, max_length=4000)
+    include_visuals: bool = True
 
 
 DATASETS = {}
@@ -36,6 +37,7 @@ def analyze(request: AnalysisRequest):
             "messages": [HumanMessage(content=request.question.strip())],
             "dataset_id": request.dataset_id,
             "file_path": file_path,
+            "include_visuals": request.include_visuals,
             "executed_queries": [],
             "query_results": [],
         })
@@ -48,10 +50,14 @@ def analyze(request: AnalysisRequest):
             "result": results[-1] if results else [],
             "explanation": final_state.get("final_conclusion", ""),
             "evidence": final_state.get("evidence", []),
+            "charts": final_state.get("charts", []),
             "metrics": {
                 "elapsed_seconds": round(perf_counter() - started, 2),
                 "llm_calls": final_state.get("llm_calls", 0),
-                "query_count": len(queries),
+                "query_count": sum(
+                    1 for item in final_state.get("evidence", [])
+                    if not item.get("error") and not item.get("cached")
+                ),
             },
         }
     except Exception as exc:
