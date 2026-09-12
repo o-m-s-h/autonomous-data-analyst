@@ -9,3 +9,7 @@ langgraph
 langchain
 langchain-openai
 langchain-groq
+numpy>=1.24
+scipy>=1.11
+statsmodels>=0.14
+matplotlib>=3.8
