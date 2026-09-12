@@ -1,163 +1,58 @@
+from time import perf_counter
+
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-
+from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage
-
 from app.agent.graph import create_graph
 
 
-router = APIRouter(
-    prefix="/analysis",
-    tags=["Analysis"]
-)
+router = APIRouter(prefix="/analysis", tags=["Analysis"])
 
 
 class AnalysisRequest(BaseModel):
-
     dataset_id: str
-
-    question: str
+    question: str = Field(min_length=1, max_length=4000)
 
 
 DATASETS = {}
 
 
-def register_dataset(
-    dataset_id: str,
-    file_path: str
-):
-
+def register_dataset(dataset_id: str, file_path: str):
     DATASETS[dataset_id] = file_path
 
 
 @router.post("/ask")
-def analyze(
-    request: AnalysisRequest
-):
-
+def analyze(request: AnalysisRequest):
     if request.dataset_id not in DATASETS:
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+    if not request.question.strip():
+        raise HTTPException(status_code=422, detail="Please enter a question.")
 
-        raise HTTPException(
-            status_code=404,
-            detail="Dataset not found."
-        )
-
-
-    file_path = DATASETS[
-        request.dataset_id
-    ]
-
-
+    file_path = DATASETS[request.dataset_id]
+    started = perf_counter()
     try:
-
-        graph = create_graph(
-            file_path
-        )
-
-
-        initial_state = {
-
-            "messages": [
-                HumanMessage(
-                    content=request.question
-                )
-            ],
-
-            "dataset_id":
-                request.dataset_id,
-
-            "file_path":
-                file_path,
-
+        graph = create_graph(file_path)
+        final_state = graph.invoke({
+            "messages": [HumanMessage(content=request.question.strip())],
+            "dataset_id": request.dataset_id,
+            "file_path": file_path,
             "executed_queries": [],
-
-            "query_results": []
-        }
-
-
-        final_state = graph.invoke(
-            initial_state
-        )
-
-
-        messages = final_state[
-            "messages"
-        ]
-
-
-        # -----------------------------------------
-        # Final explanation
-        # -----------------------------------------
-
-        explanation = ""
-
-        for message in reversed(messages):
-
-            if (
-                hasattr(message, "content")
-                and message.content
-            ):
-
-                # Last textual LLM response
-                if message.type == "ai":
-
-                    explanation = message.content
-
-                    break
-
-
-        # -----------------------------------------
-        # Get final SQL/result
-        # -----------------------------------------
-
-        executed_queries = final_state.get(
-            "executed_queries",
-            []
-        )
-
-        query_results = final_state.get(
-            "query_results",
-            []
-        )
-
-
-        sql = (
-            executed_queries[-1]
-            if executed_queries
-            else None
-        )
-
-
-        result = (
-            query_results[-1]
-            if query_results
-            else []
-        )
-
-
-        # -----------------------------------------
-        # Preserve V1 API
-        # -----------------------------------------
-
+            "query_results": [],
+        })
+        queries = final_state.get("executed_queries", [])
+        results = final_state.get("query_results", [])
+        # Keep the V1 response fields; expose all V3 evidence separately.
         return {
-
-            "question":
-                request.question,
-
-            "sql":
-                sql,
-
-            "result":
-                result,
-
-            "explanation":
-                explanation
+            "question": request.question,
+            "sql": queries[-1] if queries else None,
+            "result": results[-1] if results else [],
+            "explanation": final_state.get("final_conclusion", ""),
+            "evidence": final_state.get("evidence", []),
+            "metrics": {
+                "elapsed_seconds": round(perf_counter() - started, 2),
+                "llm_calls": final_state.get("llm_calls", 0),
+                "query_count": len(queries),
+            },
         }
-
-
-    except Exception as e:
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
