@@ -14,9 +14,9 @@ export default class AnalysisErrorBoundary extends Component {
     render() {
         if (this.state.failed) {
             return (
-                <section role="alert">
+                <section className="inline-error" role="alert">
                     <p>The analysis response could not be displayed. Please try asking again.</p>
-                    <button onClick={this.props.onDismiss}>Dismiss</button>
+                    <button className="text-button" onClick={this.props.onDismiss}>Dismiss</button>
                 </section>
             );
         }

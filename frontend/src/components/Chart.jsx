@@ -1,28 +1,9 @@
 import { useState } from "react";
+import Icon from "./Icon";
 
-function Chart({ chart }) {
+export default function Chart({ chart }) {
     const [failedImage, setFailedImage] = useState(null);
-    const validImage = chart?.image?.startsWith("data:image/png;base64,");
-    if (!validImage || failedImage === chart.image) {
-        return <p role="status">This chart could not be displayed. The answer and supporting data are still available.</p>;
-    }
-    return (
-        <figure style={{ margin: "24px 0", padding: 16, border: "1px solid #dce2e8", borderRadius: 12 }}>
-            <img
-                src={chart.image}
-                alt={chart.alt || chart.title}
-                onError={() => setFailedImage(chart.image)}
-                style={{ display: "block", width: "100%", height: "auto" }}
-            />
-            <figcaption style={{ lineHeight: 1.6, color: "#596675" }}>
-                {chart.caption}
-                {" "}
-                <a href={chart.image} download={`${chart.id || "analysis-chart"}.png`}>
-                    Download chart
-                </a>
-            </figcaption>
-        </figure>
-    );
+    const valid = typeof chart?.image === "string" && chart.image.startsWith("data:image/png;base64,");
+    if (!valid || failedImage === chart.image) return <p className="inline-error" role="status">This chart couldn't be displayed. Your answer and supporting evidence are still available.</p>;
+    return <figure className="chart-card panel"><div className="chart-card-header"><span><Icon name="chart" size={18} />{typeof chart.title === "string" ? chart.title : "Data visualization"}</span><a className="chart-download" href={chart.image} download={`${chart.id || "analysis-chart"}.png`}><Icon name="download" size={16} />Download PNG</a></div><img src={chart.image} alt={typeof chart.alt === "string" ? chart.alt : "Analysis chart"} onError={() => setFailedImage(chart.image)} /><figcaption>{typeof chart.caption === "string" ? chart.caption : ""}</figcaption></figure>;
 }
-
-export default Chart;
