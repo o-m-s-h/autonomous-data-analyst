@@ -11,6 +11,8 @@ class AnalystState(TypedDict, total=False):
     executed_queries: list[str]
     query_results: list[list[dict]]
     evidence: list[dict]
+    charts: list[dict]
+    include_visuals: bool
     query_cache: dict[str, dict]
     tool_rounds: int
     llm_calls: int
